@@ -1,0 +1,517 @@
+#!/usr/bin/wish -f
+
+# X windows file manager like windows filemanager
+
+set PROGRAMNAME "Tk File Manager for X"
+set VERSION "0.5.4"
+eval destroy [winfo child .]
+wm title . $PROGRAMNAME
+wm iconname . "Filemgr"
+wm geometry . 40x25 
+
+#create top level frames
+frame .bottommenu
+pack .bottommenu -side bottom -fill both -expand 1
+
+#create second level frame
+frame .bottomone
+frame .bottomtwo
+pack .bottomone -in .bottommenu -fill both -expand 1
+pack .bottomtwo -in .bottommenu -fill both -expand 0
+
+#create directory listing of where you are
+set namedir [exec pwd]
+label .listing -text "Current directory is:  \"$namedir\""
+pack .listing -in .bottomtwo -fill x -expand 0
+
+#create directory frames
+frame .leftdir
+frame .rightdir
+pack .leftdir .rightdir -in .bottomone -side left -fill both -expand 1
+
+#create main menu
+#file menu
+menu .filemenu -tearoff 0
+
+menu .filemenu.firstmenu -tearoff 0
+.filemenu add cascade -label "File" -underline 0 -menu .filemenu.firstmenu
+menu .filemenu.firstmenu.new -tearoff 0
+.filemenu.firstmenu add command -label "New Directory" -underline 0 -command "tomakedirect"
+.filemenu.firstmenu add command -label "New File" -underline 1 -command "tomakefile"
+.filemenu.firstmenu add command -label "Move" -underline 0 -command "selectmove"
+.filemenu.firstmenu add command -label "Copy" -underline 0 -command "selectcopy"
+.filemenu.firstmenu add command -label "Delete" -underline 0 -command "selectdelete"
+.filemenu.firstmenu add command -label "Rename" -underline 0 -command "selectname"
+.filemenu.firstmenu add command -label "Change Directory" -underline 1 -command "selectchange"
+.filemenu.firstmenu add command -label "Exit" -underline 1 -command "exit"
+
+#archive menu
+menu .filemenu.archive -tearoff 0
+.filemenu add cascade -label "Archive" -underline 0 -menu .filemenu.archive
+.filemenu.archive add command -label "untar" -underline 0 -command "untarfile"
+.filemenu.archive add command -label "tar" -underline 0 -command "tarfile"
+.filemenu.archive add command -label "gunzip" -underline 0 -command "gunzipfile"
+.filemenu.archive add command -label "gzip" -underline 1 -command "gzipfile"
+.filemenu.archive add command -label "bzip2" -underline 2 -command "bzipfile"
+.filemenu.archive add command -label "bunzip2" -underline 2 -command "bunzipfile"
+
+# rpm menu
+menu .filemenu.rpms -tearoff 0
+.filemenu add cascade -label "RPM Tool" -underline 0 -menu .filemenu.rpms
+.filemenu.rpms add command -label "RPM Version --version" -underline 4 -command "viewwin files -version no"
+.filemenu.rpms add command -label "RPM Help --help" -underline 4 -command "viewwin files -help no"
+.filemenu.rpms add command -label "Query Package File List -qpl" -underline 6 -command "viewwin files qpl yes"
+.filemenu.rpms add command -label "Query Package Information -qpi" -underline 7 -command "viewwin info qpi yes"
+.filemenu.rpms add command -label "Query File -qf" -underline 6 -command "viewwin files qf yes"
+.filemenu.rpms add command -label "Query Installed File List -qa" -underline 7 -command "viewwin files qa no"
+.filemenu.rpms add command -label "Install RPM File -i" -underline 0 -command "viewwin files i yes"
+.filemenu.rpms add command -label "Upgrade RPM File -Uvh" -underline 0 -command "viewwin files Uvh yes"
+.filemenu.rpms add command -label "Remove RPM File -e" -underline 0 -command "removerpm"
+.filemenu.rpms add command -label "Query Installed RPM File -qa | grep " -underline 4 -command "findrpmfile"
+
+# help menu
+menu .filemenu.helpmenu -tearoff 0
+.filemenu add cascade -label "Help" -underline 0 -menu .filemenu.helpmenu
+.filemenu.helpmenu add command -label "Help" -underline 0 -command "helpme"
+.filemenu.helpmenu add command -label "About" -underline 0 -command "aboutme"
+
+# a few basic bindings
+bind . <Alt-F> {}
+bind . <Alt-A> {}
+bind . <Alt-R> {}
+bind . <Alt-H> {}
+. configure -menu .filemenu
+
+#create main scroll windows
+label .labeldirname -text "Directories     "
+label .labelfilename -text "Files     " -foreground #0000FF
+scrollbar .scrolldir1 -command ".directory1 yview"
+scrollbar .scrollfile1 -command ".files1 yview"
+listbox .directory1 -yscroll ".scrolldir1 set" -relief sunken \
+	-setgrid yes -background #FFFFFF 
+listbox .files1 -yscroll ".scrollfile1 set" -relief sunken \
+	-setgrid yes -background #FFFFFF -foreground #0000FF
+pack .labeldirname -in .leftdir -side top 
+pack .directory1 -in .leftdir -side left -fill both -expand 1
+pack .scrolldir1 -in .leftdir -side left -fill both -expand 0
+pack .labelfilename -in .rightdir -side top 
+pack .files1 -in .rightdir -side left -fill both -expand 1
+pack .scrollfile1 -in .rightdir -side left -fill both -expand 0
+wm minsize . 1 1
+
+# this stuff here is for the popup menus
+proc showpopup {} {
+    set numx [winfo pointerx .]
+    set numy [winfo pointery .]
+    tk_popup .filemenu $numx $numy
+}
+
+bind .files1 <Button-2> {showpopup}
+bind .files1 <Button-3> {showpopup}
+bind .directory1 <Button-2> {showpopup}
+bind .directory1 <Button-3> {showpopup}
+
+# generic window for rpm funtions
+proc viewwin {TITLE FILES SYES} {
+     catch {set filename [selection get]}
+     catch {destroy .text}
+     toplevel .text
+     wm title .text $TITLE
+     wm geometry .text 80x25
+     frame .text.top
+     pack .text.top -side top -expand 1 -fill both     
+     scrollbar .text.scroll1 -command ".text.textlist yview"
+     listbox .text.textlist -yscroll ".text.scroll1 set" -relief sunken \
+	-setgrid yes -background #FFFFFF 
+     text .text.textarea -relief sunken -bd 2 -xscrollcommand ".text.xscroll set" \
+	    -yscrollcommand ".text.yscroll set" -width 40 -height 1 -fg black -bg white
+     .text.textarea configure -setgrid 1 
+     scrollbar .text.yscroll -command ".text.textarea yview"
+     scrollbar .text.xscroll -command ".text.textarea xview" -orient horizontal
+     button .text.closewin -command "destroy .text" -text "Close"
+     button .text.querywin -command "viewwin files qi yes" -text "Query Information"
+     button .text.fileqwin -command "viewwin files ql yes" -text "Query File List"
+
+     if {[expr [string compare $FILES qa]] == 0 } {
+         pack .text.textlist  -in .text.top -side left -expand 1 -fill both
+         pack .text.scroll1 -in .text.top -side right -expand 0 -fill y
+         pack .text.querywin .text.fileqwin .text.closewin -side left -expand 0 -padx 10
+     } else {
+         if {[expr [string compare "$SYES" "maybe"]] == 0 } {
+             pack .text.textlist  -in .text.top -side left -expand 1 -fill both
+             pack .text.scroll1 -in .text.top -side right -expand 0 -fill y
+             pack .text.querywin .text.fileqwin .text.closewin -side left -expand 0 -padx 10 
+         } else {
+             if {[expr [string compare $FILES qf]] == 0 } {
+                  pack .text.textlist  -in .text.top -side left -expand 1 -fill both
+                  pack .text.scroll1 -in .text.top -side right -expand 0 -fill y
+                  pack .text.querywin .text.fileqwin .text.closewin -side left -expand 0 -padx 10
+              } else {
+                  pack .text.textarea  -in .text.top -side left -expand 1 -fill both
+                  pack .text.yscroll -in .text.top -side right -expand 0 -fill y
+                  pack .text.xscroll -side bottom -expand 0 -fill x 
+                  pack .text.closewin -side bottom -expand 0 -padx 10 
+              }
+         }
+     }        
+
+     set TEMPSTR [open /tmp/tkfilemantmp w+]
+     if {[expr [string compare "$SYES" "yes"]] == 0 } {
+         puts $TEMPSTR [eval exec rpm -$FILES $filename]
+     } else {
+         if {[expr [string compare $FILES qa]] == 0 } {
+             puts $TEMPSTR [lsort [eval exec rpm -$FILES]]
+         } else {
+             if {[expr [string compare "$SYES" "maybe"]] == 0 } {
+                 puts $TEMPSTR $FILES
+                 set FILES qa
+             } else {
+                 puts $TEMPSTR [eval exec rpm -$FILES ]
+             }
+         }
+     }
+     close $TEMPSTR   
+
+     if {[expr [string compare $FILES qf]] == 0 } {
+         set FILES qa
+     }
+
+     set TEMPSTR [open /tmp/tkfilemantmp r]  
+     while {![eof $TEMPSTR]} {
+        .text.textarea insert end [read $TEMPSTR 1000] 
+     }
+     if { [expr [string compare $FILES qa] ] == 0 } { 
+          foreach i [.text.textarea get "1.0" end] {
+              .text.textlist insert end $i  
+         }
+     } 
+
+     close $TEMPSTR
+     eval exec rm -f /tmp/tkfilemantmp
+}
+
+
+# directory listing
+proc listdirect {dir file} {
+    global env
+    if {[string compare $dir "."] != 0} {set file $dir/$file}
+    if [file isdir $file] {
+	cd $file
+	set namedir [exec pwd]
+	.listing config -text "Current directory is:  \"$namedir\""
+	.files1 delete 0 end
+	.directory1 delete 0 end
+	foreach i [lsort -dictionary [glob -nocomplain .* *]] {
+		if [file isfile $i] {    
+			.files1 insert end $i
+		} else {
+			.directory1 insert end $i
+		}
+	}
+    	} else {
+	if [file isfile $file] {
+		if [file executable $file] {
+			exec $file &
+		} elseif [info exists env(EDITOR)] { 
+			eval exec $env(EDITOR) $file &
+	    	} else {
+			exec xedit $file &
+		}
+	} else {
+	    puts stdout "\"$file\" isn't a directory or regular file"
+	}
+    }
+}
+
+# Fill the listbox with a list of all the files in the directory 
+cd /
+if $argc>0 {set dir [lindex $argv 0]} else {set dir "."}
+foreach i [lsort -dictionary [glob -nocomplain .* *]] {
+	if [file isdir $i] {    
+	.directory1 insert end $i
+	} else {
+	       .files1 insert end $i
+	}
+}
+
+# help menu
+proc helpme {} {
+tk_messageBox -type ok -title "Help" -message \
+	"See the README for help."
+}
+
+# about menu
+proc aboutme {} {
+global PROGRAMNAME VERSION
+tk_messageBox -type ok -title "About" -message \
+	"$PROGRAMNAME\nversion $VERSION\nby Joseph Acosta."
+}
+
+# generic window for most file functions
+proc newwindow {thiswintitle thiswinlabel thiswinfunct thiswinoption thisfilename labelyes} {
+    catch {destroy .genwin}
+    toplevel .genwin
+    wm title .genwin $thiswintitle 
+    frame .genwin.topcopy
+    frame .genwin.bottomcopy
+    pack .genwin.topcopy -side top
+    pack .genwin.bottomcopy -side bottom
+    label .genwin.copyfileto -text "$thiswinlabel"
+    if { [ expr [string compare "$labelyes" "yes"] ] == 0 } {
+        entry .genwin.directlist -width 40 -relief sunken -textvariable name
+    }
+    if { [ expr [string compare "$labelyes" "rpmcmd"] ] == 0 } {
+        entry .genwin.directlist -width 40 -relief sunken -textvariable name
+    }
+    if { [ expr [string compare "$labelyes" "other"] ] == 0 } {
+        entry .genwin.directlist -width 40 -relief sunken -textvariable name
+    }
+    if { [ expr [string compare "$labelyes" "change"] ] == 0 } {
+        entry .genwin.directlist -width 40 -relief sunken -textvariable name
+    }
+    button .genwin.okbutton -text Ok -command "deletenamed $thiswinfunct $thiswinoption $thisfilename $labelyes"
+    button .genwin.copycancel -text Cancel -command "destroy .genwin"
+    bind .genwin.okbutton <Return> {"deletenamed $thiswinfunct $thiswinoption $thisfilename $labelyes"}
+    bind .genwin.copycancel <Escape> {"destroy .genwin"}
+    if { [ expr [string compare "$labelyes" "yes"] ] == 0 } {
+        pack .genwin.copyfileto .genwin.directlist -in .genwin.topcopy -side left -pady 2m		
+    } else {
+        if { [ expr [string compare "$labelyes" "other"] ] == 0 } {
+            pack .genwin.copyfileto .genwin.directlist -in .genwin.topcopy -side left -pady 2m
+        } else {
+           if { [ expr [string compare "$labelyes" "change"] ] == 0 } {
+                pack .genwin.copyfileto .genwin.directlist -in .genwin.topcopy -side left -pady 2m
+           } else {
+                if { [ expr [string compare "$labelyes" "rpmcmd"] ] == 0 } {
+                    pack .genwin.copyfileto .genwin.directlist -in .genwin.topcopy -side left -pady 2m
+                } else {
+                    pack .genwin.copyfileto -in .genwin.topcopy -side left -pady 2m
+                }
+           }
+        }
+    }
+    pack .genwin.okbutton .genwin.copycancel -in .genwin.bottomcopy -side left -fill x -pady 2m
+
+    proc deletenamed {thiscommand thisoption filenames labelyesno} {
+        if { [ expr [string compare "$thisoption" "null"] ] != 0 } {
+            if { [ expr [string compare "$labelyesno" "yes"] ] == 0 } {
+                set name [.genwin.directlist get]
+                exec $thiscommand $thisoption $name $filenames
+            } else {
+                if { [ expr [string compare "$labelyesno" "rpmcmd"] ] == 0 } {
+                    set name [.genwin.directlist get]
+                    if { [ expr [string compare "$thisoption" "-e"] ] == 0 } {
+                        exec $thiscommand $thisoption $name
+                    } else {
+                        set mystring [eval exec $thiscommand -qa | grep -i $name]
+                        viewwin "Rpm Found" $mystring "maybe"
+                    }
+                } else {
+                    exec $thiscommand $thisoption $filenames
+                }
+            }
+        } else {
+            if { [ expr [string compare "$labelyesno" "other"] ] == 0 } {
+                set name [.genwin.directlist get]
+                exec $thiscommand $filenames $name 
+            } else {
+                if { [ expr [string compare "$labelyesno" "change"] ] == 0 } {
+                    set name [.genwin.directlist get]
+                    $thiscommand $name
+                } else {
+                    exec $thiscommand $filenames
+                }
+            }
+        }
+        destroy .genwin
+        updatedir
+    }
+}
+
+# delete selection
+proc selectdelete {} {
+set filename [selection get]
+if [file isfile $filename] {
+	newwindow "Delete" "Are you sure you want to delete the file named \"$filename\" ?" rm -r "$filename" "no"
+	} else {
+	newwindow "Delete" "Are you sure you want to delete the directory named \"$filename\" ?" rm -r "$filename" "no"
+     	}
+}
+
+proc findrpmfile {} {
+        newwindow "RPM Find" "Search local system for installed RPM file: " rpm "-qa|grep" "----" "rpmcmd"
+}
+
+proc removerpm {} {
+        newwindow "Remove RPM" "Remove RPM package ? " rpm "-e" "----" "rpmcmd"
+}
+
+# this is to tar a file
+proc tarfile {} {
+set filename [selection get]
+	newwindow "tar" "Enter new name of file to tar to (\"$filename\".tar): " tar -cvf "$filename" "yes"
+}
+
+# this is to untar a file
+proc untarfile {} {
+set filename [selection get]
+	newwindow "untar" "untar the file named \"$filename\" ?" tar -xvf "$filename" "no"
+}
+
+# this is to gzip a file
+proc gzipfile {} {
+set filename [selection get]
+	newwindow "gzip" "gzip the file \"$filename\" ?" gzip "null" "$filename" "no" 
+}
+
+# this is to gunzip a file
+proc gunzipfile {} {
+set filename [selection get]
+	newwindow "gunzip" "gunzip the file named \"$filename\" ?" gunzip "null" "$filename" "no"
+}
+
+# this is to bzip a file
+proc bzipfile {} {
+set filename [selection get]
+	newwindow "bzip2" "bzip2 the file named \"$filename\" ?" bzip2 "null" "$filename" "no"
+}
+
+# this is to gunzip a file
+proc bunzipfile {} {
+set filename [selection get]
+	newwindow "bunzip2" "bunzip2 the file named \"$filename\" ?" bunzip2 "null" "$filename" "no"
+}
+
+# copy a file
+proc selectcopy {} {
+set filename [selection get]
+    if [file isfile $filename] {
+	newwindow "Copy" "Copy file \"$filename\" to:" cp "null" "$filename" "other"
+    } else {
+	newwindow "Copy" "Copy directory \"$filename\" to:" cp "null" "$filename" "other"
+    }
+}
+
+#precedure to move a file
+proc selectmove {} {
+set filename [selection get]
+        catch {destroy .del}
+	toplevel .del
+	wm title .del "Move" 
+        frame .del.topcopy
+        frame .del.bottomcopy
+        pack .del.topcopy -side top
+        pack .del.bottomcopy -side bottom
+if [file isfile $filename] { 	
+	label .del.copyfileto -text "Move the file named \"$filename to \" ?"
+    } else {
+	label .del.copyfileto -text "Move the directory named \"$filename to \" ?"
+}
+        entry .del.directlist -width 40 -relief sunken -textvariable name
+	button .del.okbutton -text Ok -command "deletefilename $filename"
+	button .del.copycancel -text Cancel -command "destroy .del"
+	pack .del.copyfileto .del.directlist -in .del.topcopy -side left -pady 2m		
+	pack .del.okbutton .del.copycancel -in .del.bottomcopy -side left -fill x -pady 2m -padx 2m
+proc deletefilenamed filenames {
+set name [.del.directlist get]
+exec cp -r $filenames $name
+exec rm -r $filenames
+destroy .del
+updatedir
+}
+}
+
+#precedure to rename a file
+proc selectname {} {
+set filename [selection get]
+    if [file isfile $filename] {
+        newwindow "Rename" "Rename the file named \"$filename to \" ?" mv "null" "$filename" "other"
+    } else {
+	newwindow "Rename" "Rename the directory named \"$filename to \" ?" mv "null" "$filename" "other"
+    }
+}
+
+proc tomakedirect {} {
+	catch {destroy .del}
+	toplevel .del
+	wm title .del "New Directory" 
+frame .del.topcopy
+frame .del.bottomcopy
+pack .del.topcopy -side top
+pack .del.bottomcopy -side bottom
+	label .del.copyfileto -text "Name of new directory ? "
+	entry .del.directlist -width 40 -relief sunken -textvariable name
+	button .del.okbutton -text Ok -command "makedircom"
+	button .del.copycancel -text Cancel -command "destroy .del"
+	pack .del.copyfileto .del.directlist -in .del.topcopy -side left -pady 2m		
+	pack .del.okbutton .del.copycancel -in .del.bottomcopy -side left -fill x -pady 2m -padx 2m
+proc makedircom {} { 
+set name [.del.directlist get]
+exec mkdir $name
+destroy .del 
+updatedir
+}
+}
+
+proc selectchange {} {
+	newwindow "Change Dir" "Change to  directory ? " cd "null" "----" "change"
+}
+
+# this updates the directory after an action 
+proc updatedir {} {
+	set namedir [exec pwd]
+	.files1 delete 0 end
+	.directory1 delete 0 end
+        cd $namedir
+	foreach i [lsort -dictionary [glob -nocomplain .* *]] {
+		if [file isfile $i] {    
+			.files1 insert end $i
+		} else {
+			.directory1 insert end $i
+		}
+	}
+}
+
+proc tomakefile {} {
+	catch {destroy .del}
+	toplevel .del
+	wm title .del "New File" 
+frame .del.topcopy
+frame .del.bottomcopy
+pack .del.topcopy -side top
+pack .del.bottomcopy -side bottom
+	label .del.copyfileto -text "Name of new file ? "
+	entry .del.directlist -width 40 -relief sunken -textvariable name
+	button .del.okbutton -text Ok -command "makedircom"
+	button .del.copycancel -text Cancel -command "destroy .del"
+	pack .del.copyfileto .del.directlist -in .del.topcopy -side left -pady 2m		
+	pack .del.okbutton .del.copycancel -in .del.bottomcopy -side left -fill x -pady 2m -padx 2m
+proc makedircom {} { 
+set name [.del.directlist get]
+set chanid [open $name w+]
+destroy .del 
+updatedir
+close $chanid
+}
+}
+
+# Set up bindings for the browser.
+
+bind .directory1 <Double-Button-1> {
+set tds ""
+set space ""
+foreach i [selection get] {
+    set tds "$tds$space$i"
+    set space " "
+}
+listdirect $dir $tds
+}
+bind .files1 <Double-Button-1> {
+set tds ""
+set space ""
+foreach i [selection get] {
+    set tds "$tds$space$i"
+    set space " "
+}
+listdirect $dir $tds
+} 
