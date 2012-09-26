@@ -283,30 +283,26 @@ proc newwindow {thiswintitle thiswinlabel thiswinfunct thiswinoption thisfilenam
             if { [ expr [string compare "$labelyesno" "yes"] ] == 0 } {
                 set name [.genwin.directlist get]
                 exec $thiscommand $thisoption $name $filenames
-            } else {
-                if { [ expr [string compare "$labelyesno" "rpmcmd"] ] == 0 } {
-                    set name [.genwin.directlist get]
-                    if { [ expr [string compare "$thisoption" "-e"] ] == 0 } {
-                        exec $thiscommand $thisoption $name
-                    } else {
-                        set mystring [eval exec $thiscommand -qa | grep -i $name]
-                        viewwin "Rpm Found" $mystring "maybe"
-                    }
+            } elseif { [ expr [string compare "$labelyesno" "rpmcmd"] ] == 0 } {
+                set name [.genwin.directlist get]
+                if { [ expr [string compare "$thisoption" "-e"] ] == 0 } {
+                    exec $thiscommand $thisoption $name
                 } else {
-                    exec $thiscommand $thisoption $filenames
+                    set mystring [eval exec $thiscommand -qa | grep -i $name]
+                    viewwin "Rpm Found" $mystring "maybe"
                 }
+            } else {
+                exec $thiscommand $thisoption $filenames
             }
         } else {
             if { [ expr [string compare "$labelyesno" "other"] ] == 0 } {
                 set name [.genwin.directlist get]
                 exec $thiscommand $filenames $name 
+            } elseif { [ expr [string compare "$labelyesno" "change"] ] == 0 } {
+                set name [.genwin.directlist get]
+                $thiscommand $name
             } else {
-                if { [ expr [string compare "$labelyesno" "change"] ] == 0 } {
-                    set name [.genwin.directlist get]
-                    $thiscommand $name
-                } else {
-                    exec $thiscommand $filenames
-                }
+                exec $thiscommand $filenames
             }
         }
         destroy .genwin
@@ -316,12 +312,12 @@ proc newwindow {thiswintitle thiswinlabel thiswinfunct thiswinoption thisfilenam
 
 # delete selection
 proc selectdelete {} {
-set filename [selection get]
-if [file isfile $filename] {
-	newwindow "Delete" "Are you sure you want to delete the file named \"$filename\" ?" rm -r "$filename" "no"
-	} else {
-	newwindow "Delete" "Are you sure you want to delete the directory named \"$filename\" ?" rm -r "$filename" "no"
-     	}
+    set filename [selection get]
+    if [file isfile $filename] {
+        newwindow "Delete" "Are you sure you want to delete the file named \"$filename\" ?" rm -r "$filename" "no"
+    } else {
+        newwindow "Delete" "Are you sure you want to delete the directory named \"$filename\" ?" rm -r "$filename" "no"
+    }
 }
 
 proc findrpmfile {} {
