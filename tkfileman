@@ -136,39 +136,31 @@ proc viewwin {TITLE FILES SYES} {
          pack .text.textlist  -in .text.top -side left -expand 1 -fill both
          pack .text.scroll1 -in .text.top -side right -expand 0 -fill y
          pack .text.querywin .text.fileqwin .text.closewin -side left -expand 0 -padx 10
+     } elseif {[expr [string compare "$SYES" "maybe"]] == 0 } {
+         pack .text.textlist  -in .text.top -side left -expand 1 -fill both
+         pack .text.scroll1 -in .text.top -side right -expand 0 -fill y
+         pack .text.querywin .text.fileqwin .text.closewin -side left -expand 0 -padx 10 
+     } elseif {[expr [string compare $FILES qf]] == 0 } {
+         pack .text.textlist  -in .text.top -side left -expand 1 -fill both
+         pack .text.scroll1 -in .text.top -side right -expand 0 -fill y
+         pack .text.querywin .text.fileqwin .text.closewin -side left -expand 0 -padx 10
      } else {
-         if {[expr [string compare "$SYES" "maybe"]] == 0 } {
-             pack .text.textlist  -in .text.top -side left -expand 1 -fill both
-             pack .text.scroll1 -in .text.top -side right -expand 0 -fill y
-             pack .text.querywin .text.fileqwin .text.closewin -side left -expand 0 -padx 10 
-         } else {
-             if {[expr [string compare $FILES qf]] == 0 } {
-                  pack .text.textlist  -in .text.top -side left -expand 1 -fill both
-                  pack .text.scroll1 -in .text.top -side right -expand 0 -fill y
-                  pack .text.querywin .text.fileqwin .text.closewin -side left -expand 0 -padx 10
-              } else {
-                  pack .text.textarea  -in .text.top -side left -expand 1 -fill both
-                  pack .text.yscroll -in .text.top -side right -expand 0 -fill y
-                  pack .text.xscroll -side bottom -expand 0 -fill x 
-                  pack .text.closewin -side bottom -expand 0 -padx 10 
-              }
-         }
+         pack .text.textarea  -in .text.top -side left -expand 1 -fill both
+         pack .text.yscroll -in .text.top -side right -expand 0 -fill y
+         pack .text.xscroll -side bottom -expand 0 -fill x 
+         pack .text.closewin -side bottom -expand 0 -padx 10 
      }        
 
      set TEMPSTR [open /tmp/tkfilemantmp w+]
      if {[expr [string compare "$SYES" "yes"]] == 0 } {
          puts $TEMPSTR [eval exec rpm -$FILES $filename]
+     } elseif {[expr [string compare $FILES qa]] == 0 } {
+         puts $TEMPSTR [lsort [eval exec rpm -$FILES]]
+     } elseif {[expr [string compare "$SYES" "maybe"]] == 0 } {
+         puts $TEMPSTR $FILES
+         set FILES qa
      } else {
-         if {[expr [string compare $FILES qa]] == 0 } {
-             puts $TEMPSTR [lsort [eval exec rpm -$FILES]]
-         } else {
-             if {[expr [string compare "$SYES" "maybe"]] == 0 } {
-                 puts $TEMPSTR $FILES
-                 set FILES qa
-             } else {
-                 puts $TEMPSTR [eval exec rpm -$FILES ]
-             }
-         }
+         puts $TEMPSTR [eval exec rpm -$FILES ]
      }
      close $TEMPSTR   
 
@@ -275,20 +267,14 @@ proc newwindow {thiswintitle thiswinlabel thiswinfunct thiswinoption thisfilenam
     bind .genwin.copycancel <Escape> {"destroy .genwin"}
     if { [ expr [string compare "$labelyes" "yes"] ] == 0 } {
         pack .genwin.copyfileto .genwin.directlist -in .genwin.topcopy -side left -pady 2m		
+    } elseif { [ expr [string compare "$labelyes" "other"] ] == 0 } {
+        pack .genwin.copyfileto .genwin.directlist -in .genwin.topcopy -side left -pady 2m
+    } elseif { [ expr [string compare "$labelyes" "change"] ] == 0 } {
+        pack .genwin.copyfileto .genwin.directlist -in .genwin.topcopy -side left -pady 2m
+    } elseif { [ expr [string compare "$labelyes" "rpmcmd"] ] == 0 } {
+        pack .genwin.copyfileto .genwin.directlist -in .genwin.topcopy -side left -pady 2m
     } else {
-        if { [ expr [string compare "$labelyes" "other"] ] == 0 } {
-            pack .genwin.copyfileto .genwin.directlist -in .genwin.topcopy -side left -pady 2m
-        } else {
-           if { [ expr [string compare "$labelyes" "change"] ] == 0 } {
-                pack .genwin.copyfileto .genwin.directlist -in .genwin.topcopy -side left -pady 2m
-           } else {
-                if { [ expr [string compare "$labelyes" "rpmcmd"] ] == 0 } {
-                    pack .genwin.copyfileto .genwin.directlist -in .genwin.topcopy -side left -pady 2m
-                } else {
-                    pack .genwin.copyfileto -in .genwin.topcopy -side left -pady 2m
-                }
-           }
-        }
+        pack .genwin.copyfileto -in .genwin.topcopy -side left -pady 2m
     }
     pack .genwin.okbutton .genwin.copycancel -in .genwin.bottomcopy -side left -fill x -pady 2m
 
